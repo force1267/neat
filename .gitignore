@@ -1,5 +1,5 @@
 .DS_Store
-node_modules
+node_modules/
 public/
 package-lock.json
 package.json
@@ -9,3 +9,4 @@ rollup.apps.js
 src/utils/
 src/main.js
 src/App.html
+.vscode/
