@@ -27,6 +27,9 @@
                 google: false,
                 popup: true,
                 redirect: false,
+                scopes: null,
+                lang: null,
+                customParameters: null,
 
                 join: false,
             }
@@ -59,29 +62,19 @@
                     this.fire("error", error)
                 });
             },
-            signinUsingEmailAndPassword(method) {
+            signinUsingEmailAndPassword() {
                 var data = this.get()
                 var app = data.app || firebase.app()
-                switch (method) {
-                    case "email":
-                        app.auth()
-                            .signInWithEmailAndPassword(data.email, data.password)
-                            .then( result => {
-                                this.fire("success", result)
-                                this.set({ user: result.user })
-                            })
-                            .catch( error => {
-                                this.set({ error })
-                                this.fire("error", error)
-                            })
-                        break;
-                    case "google-popup":
-                        ///
-                        break;
-                    default:
-                        this.set( { error: { message: "unrecognized sign-in mehtod" }} )
-                        break;
-                }
+                app.auth()
+                    .signInWithEmailAndPassword(data.email, data.password)
+                    .then( result => {
+                        this.fire("success", result)
+                        this.set({ user: result.user })
+                    })
+                    .catch( error => {
+                        this.set({ error })
+                        this.fire("error", error)
+                    })
             },
             signupUsingEmailAndPassword() {
                 var data = this.get()
