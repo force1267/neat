@@ -1,0 +1,152 @@
+{#if error}
+    <slot name="error"></slot>
+{:elseif user}
+    <slot></slot>
+{:else}
+    <slot name="signout"></slot>
+{/if}
+
+<script>
+    export default {
+        data() {
+            return {
+                app: null,
+                user: null,
+
+                error: null,
+
+                requested: false,
+
+                signin: false,
+                signout: false,
+
+                new: false,
+                email: null,
+                password: null,
+
+                google: false,
+                popup: true,
+                redirect: false,
+
+                join: false,
+            }
+        },
+        methods: {
+            signinUsingGooglePopup() {
+                var { app, scopes, lang, customParameters } = this.get()
+                
+                app || (app = firebase.app())
+
+                var provider = new firebase.auth.GoogleAuthProvider()
+
+                if(scopes) for(var s of scopes) {
+                    provider.addScope(s)
+                }
+
+                lang &&
+                    (((lang === "device") &&
+                    app.auth().useDeviceLanguage()) || (app.auth().languageCode = lang))
+                
+                customParameters && provider.setCustomParameters(customParameters)
+
+                app.auth().signInWithPopup(provider).then(result => {
+                    var token = result.credential.accessToken;
+                    var user = result.user;
+                    this.set({ token, user })
+                    this.fire("success", result)
+                }).catch(function(error) {
+                    this.set({ error })
+                    this.fire("error", error)
+                });
+            },
+            signinUsingEmailAndPassword(method) {
+                var data = this.get()
+                var app = data.app || firebase.app()
+                switch (method) {
+                    case "email":
+                        app.auth()
+                            .signInWithEmailAndPassword(data.email, data.password)
+                            .then( result => {
+                                this.fire("success", result)
+                                this.set({ user: result.user })
+                            })
+                            .catch( error => {
+                                this.set({ error })
+                                this.fire("error", error)
+                            })
+                        break;
+                    case "google-popup":
+                        ///
+                        break;
+                    default:
+                        this.set( { error: { message: "unrecognized sign-in mehtod" }} )
+                        break;
+                }
+            },
+            signupUsingEmailAndPassword() {
+                var data = this.get()
+                var app = data.app || firebase.app()
+                app.auth()
+                    .createUserWithEmailAndPassword(data.email, data.password)
+                    .then( result => {
+                        this.fire("success", result)
+                        this.set({ user: result.user })
+                    })
+                    .catch( error => {
+                        this.set({ error })
+                        this.fire("error", error)
+                    })
+            },
+            signout(){
+                var app = this.get().app || firebase.app()
+                app.auth().signOut().then(function() {
+                    this.set({ user: null })
+                    this.fire("success")
+                }).catch(function(error) {
+                    this.set({ error })
+                    this.fire("error", error)
+                });
+            },
+            request() {
+                this.set({ requested: true })
+                var data = this.get()
+
+                //methods
+                var meth = [];
+                for(var m of ["email", "google"]) {
+                    data[m] && meth.push(m)
+                }
+
+                //if signout is passed
+                data.signout && this.signout()
+
+                //if method is email
+                //and new passed, then signup
+                //if new is not passed, then signin
+                data.email &&
+                    ((data.new && this.signupUsingEmailAndPassword("email")) ||
+                    this.signinUsingEmailAndPassword("email"))
+
+                //if method is google
+                data.google &&
+                //and popup is passed (or not, popup is true by default)
+                ((data.popup && this.signinUsingGooglePopup("google-popup")) ||
+                //or redirect is passed (and popup is not)
+                (data.redirect && this.signinUsingGoogleRedirect("google-redirect")))
+
+                //implement google redirect <------ FIXME
+                //implement phone       <------ FIXME
+                //implement facebook    <------ FIXME
+                //implement anonymous   <------ FIXME
+                //implement twitter     <------ FIXME
+                //implement github      <------ FIXME
+            }
+        },
+        onstate({ changed, current, previous }) {
+            if((current.app || firebase.app()) && !current.requested) {
+                this.set({ requested: true })
+                this.request()
+            }
+        },
+    }   
+</script>

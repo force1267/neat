@@ -1,0 +1,119 @@
+{#if donelist.firebase }
+    <script defer src="{cdn}/firebase-app.js" on:load=done("app")></script>
+{:elseif !firebase}
+    <script src="{cdn}firebase.js" on:load=done("firebase")></script>
+{:else}
+    { this.set({ alldone: true })}
+{/if}
+
+{#if auth && donelist.firebase && donelist.app }
+    <script defer src="{cdn}/firebase-auth.js" on:load=done("auth")></script>
+{/if}
+
+{#if firestore && donelist.firebase && donelist.app }
+    <script defer src="{cdn}/firebase-firestore.js" on:load=done("firestore")></script>
+{/if}
+
+{#if database && donelist.firebase && donelist.app }
+    <script defer src="{cdn}/firebase-database.js" on:load=done("database")></script>
+{/if}
+
+{#if storage && donelist.firebase && donelist.app }
+    <script defer src="{cdn}/firebase-storage.js" on:load=done("storage")></script>
+{/if}
+
+{#if init && donelist.firebase && donelist.app }
+    <script src="{cdn}/init.js"></script>
+{/if}
+
+{#if alldone}
+    <slot></slot>
+{:else}
+    <slot name="loading"></slot>
+{/if}
+
+
+<script>
+    export default {
+        data() {
+            return {
+                
+                //hardcoded `version` ?! how can we change this ? <------ FIXME
+                version: "5.3.1",
+                
+                hosting: false,
+                init: false,
+                config: null,
+                cdn: null,
+                alldone: false,
+                donelist: {},
+            }
+        },
+        methods:{
+            //when some library is loaded `donelist[library] = true`
+            done( which ) {
+                var { donelist } = this.get()
+                donelist[which] = true
+                this.set( {donelist} )
+            },
+
+            //check if every requested script is loaded, initialize app and firebase
+            setalldone() {
+                var { init, config,
+                    auth, firestore, database, storage,
+                    donelist } = this.get()
+
+                var alldone = true
+                
+                //if auth requested and auth was not added to donelist then we are not done
+                auth && !donelist.auth && (alldone = false)
+                firestore && !donelist.firestore && (alldone = false)
+                database && !donelist.database && (alldone = false)
+                storage && !donelist.storage && (alldone = false)
+
+                //when all done `firebase` will be global
+
+                //for multiple app use another <Firebase> with `config` and without `init`
+                //the new app will be stored in this variable and will be passed to `on:load` event
+                //and also available at component.get().app
+                var app;
+
+                //if all done and init ( auto init script from hosting ) is not requested
+                //and if config was given init manualy
+                alldone && !init && config && (app = this.initApp(config))
+
+                //update state with new data
+                this.set({ alldone, app })
+
+                //fire `load` event for <Firebase on:load=... >
+                alldone && this.fire("load", { 
+                    firebase,
+                    app: app ? app : firebase.app()
+                })
+            },
+
+            //is anyone gonna use this ?! <------ FIXME
+            initApp(config){
+                return firebase.initializeApp(config)
+            }
+        },
+
+        //when <Firebase> is added before anything renders wen need to find `cdn`
+        //computed properties didn't work ! work on that later <------ FIXME
+        onstate({ changed, current, previous }) {
+
+            //if its initial state
+            if(previous === undefined){
+                var data = this.get()
+                
+                //if using hosting or init (firebase hosting autoinit) load libraries from hosting
+                var cdn = data.hosting || data.init ? `/__/firebase/${data.version}/` :
+                `https://www.gstatic.com/firebasejs/${data.version}/`
+                this.set({cdn})
+            } else {
+                //is this recursive ?! inside `setalldone` we change the state ! <------ FIXME
+                this.setalldone()
+            }
+        }
+    }
+</script>
