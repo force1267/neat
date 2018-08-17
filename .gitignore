@@ -4,7 +4,8 @@ public/
 package-lock.json
 package.json
 yarn.lock
-roullup.config.js
+rollup.config.js
+rollup.apps.js
 src/utils/
 src/main.js
 src/App.html
